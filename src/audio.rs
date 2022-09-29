@@ -1,5 +1,5 @@
-pub mod audio_handler {
-    use std::{collections::HashMap, hash::Hash};
+pub mod my_audio {
+    use std::{collections::HashMap};
 
     use derivative::Derivative;
     use rusty_audio::Audio;
@@ -15,7 +15,34 @@ pub mod audio_handler {
         Win,
     }
 
-    pub fn get_sound_map() -> HashMap<Sound, String>
+    pub struct AudioHandler {
+        sound_map: HashMap<Sound, String>,
+        audio: Audio,
+    }
+
+    impl AudioHandler {
+        pub fn new() -> Self {
+            Self {
+                sound_map: get_sound_map(),
+                audio: create_audio(),
+            }
+        }
+
+        pub fn play(&mut self, sound: &Sound)
+        {
+            let binding = &self.sound_map;
+            let audio_name = binding.get(sound);
+            match audio_name {
+                Some(name) => {
+                    self.audio.play(name);
+                    self.audio.wait();
+                }
+                _ => {}
+            }
+        }
+    }
+
+    fn get_sound_map() -> HashMap<Sound, String>
     {
         let map = HashMap::from(
             [
@@ -30,7 +57,7 @@ pub mod audio_handler {
         map
     }
 
-    pub fn create_audio() -> Audio
+    fn create_audio() -> Audio
     {
         let mut audio = Audio::new();
         audio.add("explode", "explode.wav");
@@ -43,17 +70,4 @@ pub mod audio_handler {
         audio
     }
 
-    pub fn play(audio: &mut Audio, sound: &Sound, sound_map: &HashMap<Sound, String>)
-    {
-        let binding = sound_map;
-        let audio_name = binding.get(sound);
-        match audio_name {
-            Some(name) => {
-                audio.play(name);
-                audio.wait();
-            }
-            _ => {}
-        }
-        
-    }
 }
