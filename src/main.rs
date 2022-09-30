@@ -51,22 +51,10 @@ fn run_render_loop() -> (Sender<Vec<Vec<&'static str>>>, JoinHandle<()>) {
     (render_sender, render_handle)
 }
 
-fn main() -> Result <(), Box<dyn Error>> {
-
-    let mut audio = AudioHandler::new();
-
-    audio.play(&Sound::Startup);
-
-    let mut stdout = create_terminal();
-
-    let (render_sender, render_handle) = run_render_loop();
-
-    // Game loop
+fn run_game_loop(audio: &mut AudioHandler, render_sender: &Sender<Vec<Vec<&str>>>) -> Result <(), Box<dyn Error>> {
     'gameloop: loop {
-
         let current_frame = new_frame();
         
-
         while event::poll(Duration::default())? {
             if let Event::Key(key_event) = event::read()? {
                 match key_event.code {
@@ -78,10 +66,25 @@ fn main() -> Result <(), Box<dyn Error>> {
                 }
             }
         }
-
+    
         let _ = render_sender.send(current_frame);
         thread::sleep(Duration::from_millis(1));
     }
+
+    Ok(())
+}
+
+fn main() -> Result <(), Box<dyn Error>> {
+
+    let mut audio = AudioHandler::new();
+
+    audio.play(&Sound::Startup);
+
+    let mut stdout = create_terminal();
+
+    let (render_sender, render_handle) = run_render_loop();
+
+    let _ = run_game_loop(&mut audio, &render_sender);
 
     drop(render_sender);
     render_handle.join().unwrap();
