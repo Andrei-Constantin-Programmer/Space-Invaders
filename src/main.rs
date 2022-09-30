@@ -1,7 +1,10 @@
 use std::error::Error;
 use std::io;
+use std::io::Stdout;
 use std::sync::mpsc;
+use std::sync::mpsc::Sender;
 use std::thread;
+use std::thread::JoinHandle;
 use std::time::Duration;
 use crossterm::ExecutableCommand;
 use crossterm::cursor::Hide;
@@ -18,19 +21,17 @@ use space_invaders::render;
 use space_invaders::audio::Sound;
 use space_invaders::audio::AudioHandler;
 
-fn main() -> Result <(), Box<dyn Error>> {
-
-    let mut audio = AudioHandler::new();
-
-    audio.play(&Sound::Startup);
-
-    // Setup terminal
+fn create_terminal() -> Stdout {
     let mut stdout = io::stdout();
-    terminal::enable_raw_mode()?;
-    stdout.execute(EnterAlternateScreen)?;
-    stdout.execute(Hide)?;
+    let _ = terminal::enable_raw_mode();
+    let _ = stdout.execute(EnterAlternateScreen);
+    let _ = stdout.execute(Hide);
 
-    // Render loop
+    stdout
+}
+
+fn run_render_loop() -> (Sender<Vec<Vec<&'static str>>>, JoinHandle<()>) {
+    
     let (render_sender, render_receiver) = mpsc::channel();
     let render_handle = thread::spawn(move || {
         let mut last_frame = frame::new_frame();
@@ -41,11 +42,24 @@ fn main() -> Result <(), Box<dyn Error>> {
                 Ok(frame) => frame,
                 Err(_) => break,
             };
-
+    
             render::render(&mut stdout, &last_frame, &current_frame, false);
             last_frame = current_frame;
         }
     });
+
+    (render_sender, render_handle)
+}
+
+fn main() -> Result <(), Box<dyn Error>> {
+
+    let mut audio = AudioHandler::new();
+
+    audio.play(&Sound::Startup);
+
+    let mut stdout = create_terminal();
+
+    let (render_sender, render_handle) = run_render_loop();
 
     // Game loop
     'gameloop: loop {
